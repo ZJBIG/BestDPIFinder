@@ -1,0 +1,25 @@
+BestDPI Finder · Windows 免安装版
+
+让成绩，帮你选择下一档灵敏度。
+
+开始使用
+1. 将压缩包解压到可写文件夹，双击 BestDPIFinder.exe。
+2. 选择 VALORANT / 无畏契约或 CS2，填写真实硬件 DPI 与当前游戏灵敏度。
+3. 点击开始。2 秒热身后完成两块测评，每块含定位点击、微调、跟踪各 20 秒。
+4. 查看轨迹与候选值，导出 JSON，在真实游戏里手动填写候选数值并复核手感。
+
+快捷退出与记录
+按 Esc 或切换窗口会释放鼠标；恢复需要主动点击，暂停不计时，中断块重试。
+每块记录写入程序旁 results/adaptive-latest.json，下次测评会更新该文件。
+保留多次历史请主动导出 JSON。
+
+软件只调整自身测试场，本地运行，不后台上传数据。
+这是一套短时启发式搜索；候选在真实游戏里复核后使用。
+普通腰射角度换算不复刻 FOV、开镜、拉伸与后坐力。
+
+Windows 10/11 x64，无需安装 Python。首次启动需要解包，请等候片刻。
+EXE 尚未签名；遇到系统提示时核对官方发布来源与 SHA-256，勿关闭安全防护。
+
+项目主页：https://zjbig.github.io/BestDPIFinder/
+下载与版本说明：https://github.com/ZJBIG/BestDPIFinder/releases
+反馈问题：https://github.com/ZJBIG/BestDPIFinder/issues

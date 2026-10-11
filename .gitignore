@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+.venv*/
+.workbuddy-ai/
+.autotest*/
+autotest_output/
+BestDPIFinder_Autotest_Result.zip
+build/
+dist/
+*.spec
+results/
+outputs/*
+!outputs/verify_exe.py
+!outputs/pack-readme/
+*.log
