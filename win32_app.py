@@ -293,12 +293,12 @@ class DesktopApp:
                 self.perf_diagnostics.message_drain_ms.append(
                     max(0.0, time.perf_counter() - drain_started) * 1000)
             now: float = time.perf_counter()
+            late: float = max(0.0, now - next_frame) if next_frame else 0.0
             if now > next_frame + 4 * interval:
                 next_frame = now  # First frame, or resync after a long stall.
             if self.active or self._dirty:
                 if now >= next_frame:
                     frame_started: float = now
-                    late: float = max(0.0, now - next_frame)
                     if self.active:
                         self.tick()
                     self.present()

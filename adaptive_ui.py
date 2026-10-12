@@ -15,6 +15,7 @@ import ctypes as ct
 import math
 import random
 import time
+from concurrent.futures import Future, ThreadPoolExecutor
 from ctypes import wintypes as wt
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -87,6 +88,8 @@ class AdaptiveApp(DesktopApp):
         self.history_path = self.base_dir / "results" / "adaptive-latest.json"
         self.capture_status = "点击一次开始：灵敏度会跟着你的成绩自动上下调整，你只管瞄准。"
         self.sound_on: bool = True
+        self._save_pool: ThreadPoolExecutor | None = None
+        self._pending_save: Future[None] | None = None
         # 最近一次命中（视角坐标与时刻）：绘制命中扩散光圈用，纯装饰不参与计分。
         self.hit_mark: tuple[float, float, float] | None = None
         self.band_note: str = band_label()
@@ -146,6 +149,9 @@ class AdaptiveApp(DesktopApp):
                     raise ct.WinError(ct.get_last_error())
             super().run_loop(message)
         finally:
+            self.active = False
+            if self.raw:
+                self.raw.stop()
             if self.autotest:
                 user32.KillTimer(self.hwnd, 3)
             if self.autotest_driver:
@@ -153,17 +159,14 @@ class AdaptiveApp(DesktopApp):
             capture = getattr(self, "autotest_capture", None)
             if capture:
                 capture.stop()
+            if self._save_pool:
+                self._save_pool.shutdown(wait=True)
 
     def inject_qa_relative(self, dx: int, dy: int, left_down: bool = False) -> None:
         """QA-only relative input hook; decoded by the same production scoring function."""
         if not self.autotest:
             raise RuntimeError("QA relative input is available only with --autotest")
         self.on_raw(dx, dy, left_down)
-
-    def tick(self) -> None:
-        super().tick()
-        if self.autotest_driver:
-            self.autotest_driver.tick()
 
     def active_elapsed(self, now: float | None = None) -> float:
         current: float = self.now() if now is None else now
@@ -569,6 +572,8 @@ class AdaptiveApp(DesktopApp):
             return
         self.last_tick = now
         self.advance_session(now)
+        if self.autotest_driver:
+            self.autotest_driver.tick()
         self.invalidate()
 
     def make_block(self, valid: bool, reason: str = "", interrupted: bool = False,
@@ -699,7 +704,21 @@ class AdaptiveApp(DesktopApp):
         if self.smoke_test or self.loaded or not self.controller or not self.controller.records:
             return
         try:
-            save_payload(self.history_path, self.payload())
+            snapshot = self.payload()
+            if self.active:
+                if self._save_pool is None:
+                    self._save_pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="BestDPI-save")
+                # One writer preserves order without putting disk latency into the next block.
+                self._pending_save = self._save_pool.submit(save_payload, self.history_path, snapshot)
+                self.status = "本块记录正在后台保存 · Esc暂停 / 失焦释放"
+                return
+            if self._pending_save is not None:
+                try:
+                    self._pending_save.result()
+                except (ValueError, OSError):
+                    pass  # Retry the latest in-memory snapshot below after mouse release.
+                self._pending_save = None
+            save_payload(self.history_path, snapshot)
             self.status = "每块已本地保存 · 灵敏度按成绩自动调整 · Esc暂停 / 失焦释放"
         except (ValueError, OSError):
             # No modal dialog while captured; never interrupt the deadline safety path.
